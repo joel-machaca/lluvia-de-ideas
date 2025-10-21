@@ -7,10 +7,10 @@ import {
   getFirestore,
   collection,
   addDoc,
-  getDocs,
   updateDoc,
   doc,
   deleteDoc,
+  onSnapshot,
 } from "firebase/firestore";
 
 // Config Firebase (Manteniendo la configuración que proporcionaste)
@@ -56,11 +56,11 @@ function Principal() {
 
   // --- FIREBASE y LÓGICA ---
   // (Mantengo tus funciones de Firebase tal cual las proporcionaste)
-  const cargarIdeas = async () => {
-    const querySnapshot = await getDocs(collection(db, "ideas"));
-    const listaIdeas = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    setIdeas(listaIdeas);
-  };
+  // const cargarIdeas = async () => {
+  //   const querySnapshot = await getDocs(collection(db, "ideas"));
+  //   const listaIdeas = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  //   setIdeas(listaIdeas);
+  // };
 
   const guardarIdeaFirebase = async (texto) => {
     await addDoc(collection(db, "ideas"), {
@@ -70,7 +70,7 @@ function Principal() {
       agregadoPor: usuarioActual,
       fecha: Date.now(),
     });
-    cargarIdeas();
+    // cargarIdeas();
   };
 
   const actualizarVotoFirebase = async (ideaId, tipoVoto) => {
@@ -89,7 +89,7 @@ function Principal() {
       votosUsuarios[usuarioActual] = tipoVoto;
     }
     await updateDoc(doc(db, "ideas", ideaId), { votos, votosUsuarios });
-    cargarIdeas();
+    // cargarIdeas();
   };
 
   const eliminarIdeaFirebase = async (ideaId) => {
@@ -97,7 +97,7 @@ function Principal() {
     if (idea?.agregadoPor !== usuarioActual) return alert("No puedes eliminar esta idea");
     if (window.confirm("¿Seguro que quieres eliminar esta idea?")) {
       await deleteDoc(doc(db, "ideas", ideaId));
-      cargarIdeas();
+      // cargarIdeas();
     }
   };
 
@@ -146,8 +146,11 @@ function Principal() {
   }, [ideas, orden]);
 
   useEffect(() => {
-    cargarIdeas();
-    
+    // cargarIdeas();
+    const unsubscribe = onSnapshot(collection(db, "ideas"), (snapshot) => {
+      const listaIdeas = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setIdeas(listaIdeas);
+    });
     // Comprobar si la sesión debe ser recordada
     if (localStorage.getItem("rememberMe") === "true" && localStorage.getItem("usuarioActual")) {
         setUsuarioActual(localStorage.getItem("usuarioActual"));
@@ -155,7 +158,7 @@ function Principal() {
     } else if (!localStorage.getItem("usuarioActual")) {
         setMostrarModalAuth(true);
     }
-
+    return () => unsubscribe();
   }, []);
 
   // Función para obtener las clases de voto
